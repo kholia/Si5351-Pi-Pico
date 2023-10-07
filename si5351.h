@@ -41,6 +41,17 @@
 #include "hardware/timer.h"
 #include "hardware/clocks.h"
 
+// https://github.com/profdc9/RFBitBanger
+#define SI5351_SYNTH_PLL_A 26
+#define SI5351_SYNTH_PLL_B 34
+#define SI5351_MULTISYNTH_0 42
+#define SI5351_MULTISYNTH_1 50
+#define SI5351_MULTISYNTH_2 58
+#define SI5351_FREQ_OFFSET 4096
+#define SI5351_FREQ_OFFSET_SHIFT 12
+#define FEEDBACK_MULTIPLIER_C 524288    // "c" part of Feedback-Multiplier from XTAL to PLL
+#define FEEDBACK_MULTIPLIER_SHIFT 19
+
 /* Define definitions */
 
 #define SI5351_BUS_BASE_ADDR            0x60

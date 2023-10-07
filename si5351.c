@@ -85,7 +85,7 @@ bool si5351_init(uint8_t i2c_addr, uint8_t xtal_load_c, uint32_t xo_freq, int32_
 	pllb_ref_osc = SI5351_PLL_INPUT_XO;
 	clkin_div = SI5351_CLKIN_DIV_1;
 
-	i2c_init(i2c0, 400*1000);
+	i2c_init(i2c0, 800*1000);
 	gpio_set_function(I2C0_SDA, GPIO_FUNC_I2C);
 	gpio_set_function(I2C0_SCL, GPIO_FUNC_I2C);
 	gpio_pull_up(I2C0_SDA);
@@ -196,6 +196,9 @@ void si5351_reset(void) {
 		si5351_output_enable((enum si5351_clock)i, 0);
 		clk_first_set[i] = false;
 	}
+
+	si5351_write(149, 0); // disable spread spectrum
+
 }
 
 /*
@@ -513,7 +516,7 @@ uint8_t set_freq_manual(uint64_t freq, uint64_t pll_freq, enum si5351_clock clk)
 	// Set multisynth registers (MS must be set before PLL)
 	set_ms(clk, ms_reg, int_mode, r_div, div_by_4);
 
-    return 0;
+	return 0;
 }
 
 /*
@@ -527,7 +530,7 @@ uint8_t set_freq_manual(uint64_t freq, uint64_t pll_freq, enum si5351_clock clk)
  */
 void set_pll(uint64_t pll_freq, enum si5351_pll target_pll)
 {
-  struct Si5351RegSet pll_reg;
+	struct Si5351RegSet pll_reg;
 
 	if(target_pll == SI5351_PLLA)
 	{
@@ -538,55 +541,55 @@ void set_pll(uint64_t pll_freq, enum si5351_pll target_pll)
 		pll_calc(SI5351_PLLB, pll_freq, &pll_reg, ref_correction[pllb_ref_osc], 0);
 	}
 
-  // Derive the register values to write
+	// Derive the register values to write
 
-  // Prepare an array for parameters to be written to
-  uint8_t __p[20];
-  uint8_t *params = __p;
-  uint8_t i = 0;
-  uint8_t temp;
+	// Prepare an array for parameters to be written to
+	uint8_t __p[20];
+	uint8_t *params = __p;
+	uint8_t i = 0;
+	uint8_t temp;
 
-  // Registers 26-27
-  temp = ((pll_reg.p3 >> 8) & 0xFF);
-  params[i++] = temp;
+	// Registers 26-27
+	temp = ((pll_reg.p3 >> 8) & 0xFF);
+	params[i++] = temp;
 
-  temp = (uint8_t)(pll_reg.p3  & 0xFF);
-  params[i++] = temp;
+	temp = (uint8_t)(pll_reg.p3  & 0xFF);
+	params[i++] = temp;
 
-  // Register 28
-  temp = (uint8_t)((pll_reg.p1 >> 16) & 0x03);
-  params[i++] = temp;
+	// Register 28
+	temp = (uint8_t)((pll_reg.p1 >> 16) & 0x03);
+	params[i++] = temp;
 
-  // Registers 29-30
-  temp = (uint8_t)((pll_reg.p1 >> 8) & 0xFF);
-  params[i++] = temp;
+	// Registers 29-30
+	temp = (uint8_t)((pll_reg.p1 >> 8) & 0xFF);
+	params[i++] = temp;
 
-  temp = (uint8_t)(pll_reg.p1  & 0xFF);
-  params[i++] = temp;
+	temp = (uint8_t)(pll_reg.p1  & 0xFF);
+	params[i++] = temp;
 
-  // Register 31
-  temp = (uint8_t)((pll_reg.p3 >> 12) & 0xF0);
-  temp += (uint8_t)((pll_reg.p2 >> 16) & 0x0F);
-  params[i++] = temp;
+	// Register 31
+	temp = (uint8_t)((pll_reg.p3 >> 12) & 0xF0);
+	temp += (uint8_t)((pll_reg.p2 >> 16) & 0x0F);
+	params[i++] = temp;
 
-  // Registers 32-33
-  temp = (uint8_t)((pll_reg.p2 >> 8) & 0xFF);
-  params[i++] = temp;
+	// Registers 32-33
+	temp = (uint8_t)((pll_reg.p2 >> 8) & 0xFF);
+	params[i++] = temp;
 
-  temp = (uint8_t)(pll_reg.p2  & 0xFF);
-  params[i++] = temp;
+	temp = (uint8_t)(pll_reg.p2  & 0xFF);
+	params[i++] = temp;
 
-  // Write the parameters
-  if(target_pll == SI5351_PLLA)
-  {
-    si5351_write_bulk(SI5351_PLLA_PARAMETERS, i, params);
+	// Write the parameters
+	if(target_pll == SI5351_PLLA)
+	{
+		si5351_write_bulk(SI5351_PLLA_PARAMETERS, i, params);
 		plla_freq = pll_freq;
-  }
-  else if(target_pll == SI5351_PLLB)
-  {
-    si5351_write_bulk(SI5351_PLLB_PARAMETERS, i, params);
+	}
+	else if(target_pll == SI5351_PLLB)
+	{
+		si5351_write_bulk(SI5351_PLLB_PARAMETERS, i, params);
 		pllb_freq = pll_freq;
-  }
+	}
 }
 
 /*
@@ -706,20 +709,20 @@ void set_ms(enum si5351_clock clk, struct Si5351RegSet ms_reg, uint8_t int_mode,
  */
 void si5351_output_enable(enum si5351_clock clk, uint8_t enable)
 {
-  uint8_t reg_val;
+	uint8_t reg_val;
 
-  reg_val = si5351_read(SI5351_OUTPUT_ENABLE_CTRL);
+	reg_val = si5351_read(SI5351_OUTPUT_ENABLE_CTRL);
 
-  if(enable == 1)
-  {
-    reg_val &= ~(1<<(uint8_t)clk);
-  }
-  else
-  {
-    reg_val |= (1<<(uint8_t)clk);
-  }
+	if(enable == 1)
+	{
+		reg_val &= ~(1<<(uint8_t)clk);
+	}
+	else
+	{
+		reg_val |= (1<<(uint8_t)clk);
+	}
 
-  si5351_write(SI5351_OUTPUT_ENABLE_CTRL, reg_val);
+	si5351_write(SI5351_OUTPUT_ENABLE_CTRL, reg_val);
 }
 
 /*
@@ -733,31 +736,31 @@ void si5351_output_enable(enum si5351_clock clk, uint8_t enable)
  *   (use the si5351_drive enum)
  */
 void si5351_drive_strength(enum si5351_clock clk, enum si5351_drive drive) {
-  uint8_t reg_val;
-  const uint8_t mask = 0x03;
+	uint8_t reg_val;
+	const uint8_t mask = 0x03;
 
-  reg_val = si5351_read(SI5351_CLK0_CTRL + (uint8_t)clk);
-  reg_val &= ~(mask);
+	reg_val = si5351_read(SI5351_CLK0_CTRL + (uint8_t)clk);
+	reg_val &= ~(mask);
 
-  switch(drive)
-  {
-  case SI5351_DRIVE_2MA:
-    reg_val |= 0x00;
-    break;
-  case SI5351_DRIVE_4MA:
-   reg_val |= 0x01;
-    break;
-  case SI5351_DRIVE_6MA:
-    reg_val |= 0x02;
-    break;
-  case SI5351_DRIVE_8MA:
-    reg_val |= 0x03;
-    break;
-  default:
-    break;
-  }
+	switch(drive)
+	{
+		case SI5351_DRIVE_2MA:
+			reg_val |= 0x00;
+			break;
+		case SI5351_DRIVE_4MA:
+			reg_val |= 0x01;
+			break;
+		case SI5351_DRIVE_6MA:
+			reg_val |= 0x02;
+			break;
+		case SI5351_DRIVE_8MA:
+			reg_val |= 0x03;
+			break;
+		default:
+			break;
+	}
 
-  si5351_write(SI5351_CLK0_CTRL + (uint8_t)clk, reg_val);
+	si5351_write(SI5351_CLK0_CTRL + (uint8_t)clk, reg_val);
 }
 
 /*
@@ -1605,35 +1608,35 @@ uint64_t multisynth67_calc(uint64_t freq, uint64_t pll_freq, struct Si5351RegSet
 
 void update_sys_status(struct Si5351Status *status)
 {
-  uint8_t reg_val = 0;
+	uint8_t reg_val = 0;
 
-  reg_val = si5351_read(SI5351_DEVICE_STATUS);
+	reg_val = si5351_read(SI5351_DEVICE_STATUS);
 
-  // Parse the register
-  status->SYS_INIT = (reg_val >> 7) & 0x01;
-  status->LOL_B = (reg_val >> 6) & 0x01;
-  status->LOL_A = (reg_val >> 5) & 0x01;
-  status->LOS = (reg_val >> 4) & 0x01;
-  status->REVID = reg_val & 0x03;
+	// Parse the register
+	status->SYS_INIT = (reg_val >> 7) & 0x01;
+	status->LOL_B = (reg_val >> 6) & 0x01;
+	status->LOL_A = (reg_val >> 5) & 0x01;
+	status->LOS = (reg_val >> 4) & 0x01;
+	status->REVID = reg_val & 0x03;
 }
 
 void update_int_status(struct Si5351IntStatus *int_status)
 {
-  uint8_t reg_val = 0;
+	uint8_t reg_val = 0;
 
-  reg_val = si5351_read(SI5351_INTERRUPT_STATUS);
+	reg_val = si5351_read(SI5351_INTERRUPT_STATUS);
 
-  // Parse the register
-  int_status->SYS_INIT_STKY = (reg_val >> 7) & 0x01;
-  int_status->LOL_B_STKY = (reg_val >> 6) & 0x01;
-  int_status->LOL_A_STKY = (reg_val >> 5) & 0x01;
-  int_status->LOS_STKY = (reg_val >> 4) & 0x01;
+	// Parse the register
+	int_status->SYS_INIT_STKY = (reg_val >> 7) & 0x01;
+	int_status->LOL_B_STKY = (reg_val >> 6) & 0x01;
+	int_status->LOL_A_STKY = (reg_val >> 5) & 0x01;
+	int_status->LOS_STKY = (reg_val >> 4) & 0x01;
 }
 
 void ms_div(enum si5351_clock clk, uint8_t r_div, uint8_t div_by_4)
 {
 	uint8_t reg_val = 0;
-    uint8_t reg_addr = 0;
+	uint8_t reg_addr = 0;
 
 	switch(clk)
 	{
@@ -1790,32 +1793,32 @@ uint8_t select_r_div_ms67(uint64_t *freq)
 // Rebuild functions for Raspberry Pi Pico
 
 uint8_t si5351_write_bulk(uint8_t regAddr, uint8_t length, uint8_t *data) {
-  int num_bytes_read = 0;
-  uint8_t msg[length + 1];
+	int num_bytes_read = 0;
+	uint8_t msg[length + 1];
 
-  // Append register address to front of data packet
-  msg[0] = regAddr;
-  for (int i = 0; i < length; i++) {
-    msg[i + 1] = data[i];
-  }
+	// Append register address to front of data packet
+	msg[0] = regAddr;
+	for (int i = 0; i < length; i++) {
+		msg[i + 1] = data[i];
+	}
 
-  // Write data to register(s) over I2C
-  i2c_write_blocking(i2c0, i2c_bus_addr, msg, (length + 1), false);
+	// Write data to register(s) over I2C
+	i2c_write_blocking(i2c0, i2c_bus_addr, msg, (length + 1), false);
 
-  return num_bytes_read;
+	return num_bytes_read;
 }
 
 uint8_t si5351_write(uint8_t regAddr, uint8_t data) {
-  si5351_write_bulk(regAddr, 1, &data);
+	si5351_write_bulk(regAddr, 1, &data);
 
-  return 0;
+	return 0;
 }
 
 uint8_t si5351_read(uint8_t regAddr) {
-  uint8_t buf;
+	uint8_t buf;
 
-  i2c_write_blocking(i2c0, i2c_bus_addr, &regAddr, 1, true);
-  i2c_read_blocking(i2c0, i2c_bus_addr, &buf, 1, false);
+	i2c_write_blocking(i2c0, i2c_bus_addr, &regAddr, 1, true);
+	i2c_read_blocking(i2c0, i2c_bus_addr, &buf, 1, false);
 
-  return buf;
+	return buf;
 }
